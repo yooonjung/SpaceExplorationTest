@@ -1,0 +1,816 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>우주탐사 영상 퀴즈</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;700;900&display=swap">
+<style>
+/* 교실 프로젝터용 단일 다크 테마: 상단 상태줄 / 무대 / 선생님 조작바 */
+:root{
+  color-scheme:dark;
+  --bg:#0a0e24; --bg2:#11173a; --panel:#1a2150; --line:#2c3670;
+  --fg:#eef0ff; --muted:#9aa3d6; --accent:#ffcf3f; --good:#2fd17a; --bad:#ff5a6e;
+  --k0:#e21b3c; --k1:#1368ce; --k2:#d89e00; --k3:#26890c;
+  --display:"Black Han Sans","Noto Sans KR",system-ui,sans-serif;
+  --body:"Noto Sans KR",system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{
+  background:
+    radial-gradient(1px 1px at 12% 18%,#fff8 50%,transparent 51%),
+    radial-gradient(1px 1px at 68% 8%,#fff6 50%,transparent 51%),
+    radial-gradient(1.5px 1.5px at 85% 42%,#fff7 50%,transparent 51%),
+    radial-gradient(1px 1px at 32% 72%,#fff5 50%,transparent 51%),
+    radial-gradient(1px 1px at 52% 90%,#fff6 50%,transparent 51%),
+    radial-gradient(ellipse at 80% -10%,#24306e 0%,transparent 55%),
+    var(--bg);
+  background-attachment:fixed;
+  color:var(--fg);font-family:var(--body);font-size:16px;
+}
+[hidden]{display:none!important}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+#app{min-height:100%;display:grid;grid-template-rows:auto 1fr auto}
+
+/* 상단 */
+#top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  padding:10px 16px;border-bottom:1px solid var(--line);background:#0a0e24cc;backdrop-filter:blur(6px)}
+.brand{display:flex;align-items:baseline;gap:10px;min-width:0}
+.brand b{font-family:var(--display);font-weight:400;font-size:22px;letter-spacing:.02em;color:var(--accent)}
+.brand span{color:var(--muted);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pills{display:flex;gap:8px;flex-wrap:wrap}
+.pill{padding:4px 10px;border-radius:999px;background:var(--panel);border:1px solid var(--line);font-size:13px;font-variant-numeric:tabular-nums}
+.pill.ok{border-color:var(--good)} .pill.warn{border-color:var(--accent)} .pill.err{border-color:var(--bad)}
+.pill.me{background:var(--accent);color:#1a1400;border-color:var(--accent);font-weight:700}
+
+/* 무대 */
+#stage{width:100%;max-width:1200px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:14px}
+.eyebrow{font-size:13px;letter-spacing:.08em;color:var(--muted)}
+h1,h2{font-family:var(--display);font-weight:400;margin:0;text-wrap:balance}
+h1{font-size:clamp(28px,4.4vw,52px);line-height:1.15}
+h2{font-size:clamp(22px,3vw,34px)}
+.muted{color:var(--muted)}
+
+/* 처음 화면 */
+.roles{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:8px}
+.role{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;text-align:left;display:flex;flex-direction:column;gap:6px}
+.role:hover{border-color:var(--accent)}
+.role b{font-family:var(--display);font-weight:400;font-size:24px}
+.role.small{padding:14px 22px}
+.form{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px;max-width:440px;width:100%;margin:0 auto}
+.form label{font-size:14px;color:var(--muted)}
+.form input{width:100%;padding:14px;border-radius:10px;border:1px solid var(--line);background:var(--bg2);color:var(--fg);font-size:22px;font-weight:700;letter-spacing:.04em}
+.btn{padding:12px 18px;border-radius:10px;border:0;background:var(--accent);color:#1a1400;font-weight:900;font-size:17px}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--fg);font-weight:700}
+.btn:disabled{opacity:.4;cursor:default}
+.err{color:var(--bad);font-weight:700}
+
+/* 대기실 */
+.lobby{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:16px}
+@media (max-width:760px){.lobby{grid-template-columns:1fr}}
+.joinbox{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:10px;align-items:center;text-align:center}
+.code{font-family:var(--display);font-size:clamp(48px,8vw,84px);letter-spacing:.08em;color:var(--accent);line-height:1}
+.url{font-size:13px;color:var(--muted);word-break:break-all}
+#qr{background:#fff;padding:10px;border-radius:10px;line-height:0}
+#qr img,#qr canvas{display:block}
+.roster{background:var(--bg2);border:1px solid var(--line);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{padding:8px 14px;border-radius:999px;background:var(--panel);font-weight:700;animation:pop .3s ease}
+.chip.me{background:var(--accent);color:#1a1400}
+button.chip{border:1px solid var(--line);display:inline-flex;align-items:center;gap:6px}
+button.chip:hover{border-color:var(--bad)}
+button.chip .x{color:var(--muted);font-weight:400}
+button.chip.ask{background:var(--bad);border-color:var(--bad);color:#fff}
+button.chip.ask .x{color:#fff}
+#manage{position:fixed;inset:0;background:#05081acc;display:grid;place-items:center;padding:16px;z-index:10}
+.mpanel{background:var(--bg2);border:1px solid var(--line);border-radius:16px;padding:18px;width:min(560px,100%);max-height:80vh;display:flex;flex-direction:column;gap:12px}
+.mlist{overflow:auto;display:flex;flex-direction:column;gap:8px}
+.mrow{display:flex;align-items:center;gap:10px;background:var(--panel);border-radius:10px;padding:10px 14px}
+.mrow .nm{flex:1;min-width:0;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mrow .st{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.btn.kick{background:transparent;border:1px solid var(--bad);color:var(--bad);font-size:14px;padding:8px 12px}
+.btn.kick.ask{background:var(--bad);color:#fff}
+@keyframes pop{from{transform:scale(.6);opacity:.3}to{transform:scale(1);opacity:1}}
+
+/* 영상 */
+#videoArea{width:100%;max-width:1200px;margin:0 auto;padding:0 16px 16px}
+.vbox{position:relative;width:min(100%,calc((100vh - 230px) * 16 / 9));min-width:min(100%,320px);aspect-ratio:16/9;margin:0 auto;background:#000;border-radius:12px;overflow:hidden;max-width:100%}
+.vbox iframe,#player{position:absolute;inset:0;width:100%;height:100%;border:0}
+.shield{position:absolute;inset:0}
+.vhead{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.banner{background:var(--accent);color:#1a1400;border-radius:12px;padding:14px 18px;font-weight:900;font-size:18px}
+
+/* 문제 */
+.qhead{display:flex;align-items:center;gap:14px}
+.timer{flex:none;width:78px;height:78px;border-radius:50%;background:#5b2a9e;display:grid;place-items:center;font-family:var(--display);font-size:36px;font-variant-numeric:tabular-nums;border:3px solid #ffffff30}
+.timer.low{background:var(--bad)}
+.qcard{flex:1;min-width:0;background:#fff;color:#141414;border-radius:12px;padding:18px 22px;font-weight:900;font-size:clamp(20px,3vw,38px);line-height:1.3;text-align:center;text-wrap:balance}
+.count{flex:none;text-align:center;font-variant-numeric:tabular-nums}
+.count b{display:block;font-family:var(--display);font-size:34px;font-weight:400}
+.readbar{height:10px;border-radius:999px;background:var(--panel);overflow:hidden}
+.readbar i{display:block;height:100%;background:var(--accent);width:100%}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tile{position:relative;display:flex;align-items:center;gap:14px;min-height:clamp(76px,13vh,130px);padding:14px 18px;border-radius:10px;border:0;
+  color:#fff;font-weight:900;font-size:clamp(17px,2.4vw,30px);text-align:left;box-shadow:inset 0 -6px 0 #0004;min-width:0}
+.tile .sh{flex:none;font-size:1.2em;width:1.3em;text-align:center}
+.tile .tx{min-width:0;overflow-wrap:anywhere}
+.tile.c0{background:var(--k0)} .tile.c1{background:var(--k1)} .tile.c2{background:var(--k2)} .tile.c3{background:var(--k3)}
+button.tile:active{transform:translateY(2px)}
+.tile.dim{opacity:.28}
+.tile.pick{outline:5px solid #fff;outline-offset:-5px}
+.tile .mark{margin-left:auto;font-size:1.3em;flex:none}
+.tile:disabled{cursor:default}
+.wait{text-align:center;font-weight:700;font-size:18px;padding:10px;border-radius:10px;background:var(--panel)}
+
+/* 정답 공개 */
+.bars{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;align-items:end;height:150px;max-width:640px;width:100%;margin:0 auto}
+.bar{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px}
+.bar i{display:block;width:100%;border-radius:6px 6px 0 0;min-height:6px;transition:height .5s}
+.bar span{font-family:var(--display);font-size:24px;font-variant-numeric:tabular-nums}
+.bar.c0 i{background:var(--k0)} .bar.c1 i{background:var(--k1)} .bar.c2 i{background:var(--k2)} .bar.c3 i{background:var(--k3)}
+.bar.dim{opacity:.3}
+.result{border-radius:14px;padding:16px;text-align:center;font-family:var(--display);font-size:clamp(26px,4vw,40px)}
+.result.good{background:var(--good);color:#06240f} .result.bad{background:var(--bad);color:#2a0008}
+.result small{display:block;font-family:var(--body);font-size:16px;font-weight:700;margin-top:4px}
+
+/* 순위 */
+.board{display:flex;flex-direction:column;gap:10px;max-width:760px;width:100%;margin:0 auto}
+.row{display:flex;align-items:center;gap:14px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 18px;font-size:20px;font-weight:700}
+.row .rk{font-family:var(--display);font-size:26px;width:2ch;color:var(--accent);font-variant-numeric:tabular-nums}
+.row .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .sc{font-variant-numeric:tabular-nums}
+.row.me{background:var(--accent);color:#1a1400;border-color:var(--accent)} .row.me .rk{color:#1a1400}
+.podium{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;align-items:end;max-width:700px;width:100%;margin:0 auto}
+.pod{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;min-width:0}
+.pod .nm{font-weight:900;font-size:clamp(16px,2.4vw,24px);overflow-wrap:anywhere}
+.pod .blk{width:100%;border-radius:10px 10px 0 0;display:grid;place-items:center;font-family:var(--display);font-size:42px;color:#1a1400}
+.pod.p1 .blk{height:190px;background:var(--accent)} .pod.p2 .blk{height:140px;background:#c9cfee} .pod.p3 .blk{height:105px;background:#e09a5b}
+
+/* 선생님 조작바 */
+#hostbar{position:sticky;bottom:0;display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;
+  padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line);background:#0a0e24ee}
+#hostbar select{padding:10px;border-radius:10px;background:var(--panel);color:var(--fg);border:1px solid var(--line);font:inherit}
+.note{font-size:14px;color:var(--muted);text-align:center}
+@media (max-width:560px){
+  .tiles{gap:8px}.tile{padding:10px 12px;gap:8px}
+  .timer{width:58px;height:58px;font-size:26px}
+  .qcard{padding:12px 14px}
+  .count b{font-size:24px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="top"></header>
+  <div>
+    <main id="stage"></main>
+    <div id="videoArea" hidden>
+      <div class="vbox"><div id="player"></div><div class="shield" id="shield" hidden></div></div>
+    </div>
+  </div>
+  <footer id="hostbar" hidden></footer>
+  <div id="manage" hidden></div>
+</div>
+
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+/* =========================================================
+   수업 데이터 — 영상과 문제는 여기만 고치면 됩니다.
+   rate: 재생 배속 / end: 그 초에서 영상 멈춤 / start: 시작 초
+   문제 a: 정답 번호(0=빨강▲ 1=파랑◆ 2=노랑● 3=초록■), t: 제한시간(초)
+   ========================================================= */
+const SEGMENTS = [
+  { title:'① 보이저 호', rate:1.75, videos:[{id:'OWmU1qJPaxE'}], from:0, to:6 },
+  { title:'② 스피처 우주 망원경', rate:1.75, videos:[{id:'AT_bpd9Q5Lo'}], from:7, to:8 },
+  { title:'③ 허블 우주 망원경', rate:2, videos:[{id:'dI4v99wWNGQ'},{id:'Vur832hIn0k'}], from:9, to:15 },
+  { title:'④ 제임스 웹 우주 망원경', rate:2, videos:[{id:'ZEHGwSa7Ypo'},{id:'r5xSmkxXR6Y', end:360}], from:16, to:23 },
+  { title:'⑤ 우주의 마지막', rate:2, videos:[{id:'DF1CB4x_XGQ'}], from:24, to:24 },
+];
+const QUESTIONS = [
+  {q:'보이저의 뜻은?', o:['항해자','탐험가','관찰자','방랑자'], a:0, t:5},
+  {q:'보이저 1호와 2호 중 먼저 출발한 것은?', o:['보이저 1호','보이저 2호','같은 날 출발','둘 다 출발 못함'], a:1, t:5},
+  {q:'보이저 2호가 1호보다 얼마나 더 먼저 출발했을까?', o:['1일','16일','1개월','1년'], a:1, t:5},
+  {q:'태양풍 입자의 영향이 줄어들고 성간 입자가 늘어나는 경계를 무엇이라고 하는가?', o:['태양권계면','오르트 구름','카이퍼 벨트','소행성대'], a:0, t:5},
+  {q:'목성에 먼저 도달한 것은?', o:['보이저 1호','보이저 2호','동시에 도달','둘 다 못 감'], a:0, t:5},
+  {q:'보이저보다 나이가 많은 것은?', o:['스마트폰','월드와이드웹(WWW)','최초의 휴대전화 통화','닌텐도 패미컴'], a:2, t:20},
+  {q:'1990년 2월 14일 보이저 1호가 찍은 지구의 사진 제목은? (칼 세이건의 유명한 책 이름이기도 함)', o:['창백한 푸른 점','코스모스','푸른 구슬','지구돋이'], a:0, t:5},
+  {q:'스피처 우주 망원경 활동기간은?', o:['약 6년','약 16년','약 26년','약 36년'], a:1, t:5},
+  {q:'스피처 우주 망원경은 어떤 빛을 찾는 데 특화된 망원경인가?', o:['자외선','X선','적외선','가시광선'], a:2, t:5},
+  {q:'허블 우주 망원경은 몇 년도에 발사되었을까?', o:['1977년','1990년','2003년','2021년'], a:1, t:5},
+  {q:'허블 망원경의 주경의 지름은 얼마일까?', o:['0.24 m','2.4 m','6.5 m','24 m'], a:1, t:5},
+  {q:'허블 망원경을 수리하기 위해 보낸 우주선의 이름은?', o:['챌린저호','아폴로 11호','엔데버호','보이저호'], a:2, t:5},
+  {q:'1993년 새로운 허블 망원경 책임자가 처음으로 천체가 아닌 보고 싶어 했던 다른 것은?', o:['지구의 도시 불빛','텅 빈 검은 하늘','달의 뒷면','태양 표면'], a:1, t:5},
+  {q:'검은 하늘을 촬영한 결과 바늘구멍 같은 작은 공간에서 3천 개 이상 보였던 것은?', o:['별','행성','은하','소행성'], a:2, t:5},
+  {q:'수명을 다한 별이 폭발과 함께 마지막 빛을 내고 죽게 되는 것을 무엇이라고 할까?', o:['블랙홀','초신성','백색왜성','성운'], a:1, t:5},
+  {q:'우리 인간 96%를 이루는 원소가 아닌 것은?', o:['산소','탄소','수소','철'], a:3, t:5},
+  {q:'제임스 웹이 발사된 날은? 2021년 어느 날인가?', o:['1월 1일','7월 4일','10월 9일','12월 25일'], a:3, t:5},
+  {q:'2021년 12월 25일 출발한 제임스 웹 망원경! 그렇다면 2021+12+25 =', o:['2048','2058','2068','2158'], a:1, t:5},
+  {q:'오래된 빛의 파장은 어떻게 될까?', o:['길어진다','짧아진다','그대로다','사라진다'], a:0, t:5},
+  {q:'제임스 웹이 위치할 곳은? 태양이 지구를 당기는 힘과 지구가 태양을 당기는 힘이 같은 곳!', o:['달 표면','라그랑주점 L2','국제우주정거장 옆','화성 궤도'], a:1, t:20},
+  {q:'제임스 웹의 가장 중요한 임무는 무엇일까?', o:['화성 착륙','태양 흑점 관측','우주 최초의 별과 은하 관측','인공위성 수리'], a:2, t:5},
+  {q:'제임스 웹의 두 번째 임무는 지구와 같은 행성을 찾는 것이다. 지구와 같은 행성에는 어떤 원소가 있어 광합성을 확인할 수 있을까?', o:['헬륨','산소','철','금'], a:1, t:5},
+  {q:'제임스 웹의 개발 및 발사 비용은?', o:['약 1억 달러','약 10억 달러','약 100억 달러','약 1000억 달러'], a:2, t:5},
+  {q:'제임스 웹의 반사경은 어떤 원자로 되어 있는가? (원자번호 4번, 원소기호 Be)', o:['리튬','베릴륨','붕소','탄소'], a:1, t:5},
+  {q:'"이것은 종종 우리를 과거에는 결코 없었던 세계로 이끌 수 있다. 그러나 이것 없이 갈 수 있는 곳은 없다." - 칼 세이건 명언', o:['과학','용기','상상력','호기심'], a:2, t:20},
+];
+/* ========================================================= */
+
+const READ_MS = 4000;              // 보기 나오기 전 문제 읽는 시간
+const PREFIX = 'space-kq-';
+const SHAPES = ['▲','◆','●','■'];
+const $ = s => document.querySelector(s);
+const esc = t => String(t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const store = {
+  get(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } },
+  set(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} },
+  del(k){ try{ localStorage.removeItem(k); }catch(e){} }
+};
+const segOf = qi => SEGMENTS.findIndex(s => qi >= s.from && qi <= s.to);
+
+let role = null;          // 'host' | 'student'
+let code = '';
+let peer = null;
+let net = 'idle', netMsg = '';
+
+/* ---------- 유튜브 ---------- */
+let player = null, playerP = null, ytFailed = false;
+const ytReady = new Promise(res => { window.onYouTubeIframeAPIReady = res; });
+(function(){
+  const s = document.createElement('script');
+  s.src = 'https://www.youtube.com/iframe_api';
+  s.onerror = () => { ytFailed = true; render(); };
+  document.head.appendChild(s);
+})();
+function ensurePlayer(){
+  if(!playerP){
+    playerP = ytReady.then(() => new Promise(res => {
+      const host = role === 'host';
+      player = new YT.Player('player', {
+        width:'100%', height:'100%',
+        playerVars:{ playsinline:1, rel:0, modestbranding:1, controls: host?1:0, disablekb: host?0:1, fs: host?1:0 },
+        events:{ onReady: () => res(player), onStateChange: onPlayerState }
+      });
+    }));
+  }
+  return playerP;
+}
+function vOpts(v, start){
+  const o = { videoId: v.id, startSeconds: start != null ? start : (v.start || 0) };
+  if(v.end) o.endSeconds = v.end;
+  return o;
+}
+function safe(fn){ try{ return fn(); }catch(e){ return null; } }
+
+/* =========================================================
+   선생님(진행자)
+   ========================================================= */
+let S = null, players = {}, answers = {}, conns = new Map();
+let vidPlaying = false, endedKey = '', lastSync = 0;
+
+function hostInit(resume){
+  role = 'host';
+  const saved = resume ? store.get('kq_host') : null;
+  if(saved){
+    ({code, S, players} = saved); answers = saved.answers || {}; banned = new Set(saved.banned || []);
+    Object.values(players).forEach(p => p.online = false);
+    if(S.phase === 'getready' || S.phase === 'answer') { S.phase = 'getready'; S.endsAt = Date.now() + READ_MS; S.dur = READ_MS; answers = {}; }
+    if(S.phase === 'video') S.videoDone = false;
+  } else {
+    code = String(Math.floor(100000 + Math.random() * 900000));
+    S = { phase:'lobby', seg:0, vid:0, qi:0, videoDone:false, rate:SEGMENTS[0].rate, endsAt:0, dur:0 };
+    players = {}; answers = {}; banned = new Set();
+  }
+  openHostPeer();
+  if(S.phase === 'video') loadHostVideo(false);
+  changed();
+}
+function openHostPeer(){
+  if(typeof Peer === 'undefined'){ net = 'err'; netMsg = '연결 도구를 불러오지 못했어요. 인터넷 연결을 확인해 주세요.'; render(); return; }
+  net = 'connecting'; render();
+  peer = new Peer(PREFIX + code, { debug:0 });
+  peer.on('open', () => { net = 'ok'; netMsg = ''; render(); });
+  peer.on('connection', c => {
+    c.on('data', d => onHostData(c, d));
+    c.on('close', () => dropConn(c));
+    c.on('error', () => dropConn(c));
+  });
+  peer.on('disconnected', () => { net = 'retry'; render(); setTimeout(() => { if(peer && !peer.destroyed) peer.reconnect(); }, 2000); });
+  peer.on('error', e => {
+    if(e.type === 'unavailable-id' && S.phase === 'lobby'){
+      code = String(Math.floor(100000 + Math.random() * 900000));
+      peer.destroy(); openHostPeer(); return;
+    }
+    if(e.type === 'peer-unavailable') return;
+    net = 'err'; netMsg = '연결 오류(' + e.type + '). 페이지를 새로 고친 뒤 "이어하기"를 눌러 주세요.'; render();
+  });
+}
+function onHostData(c, d){
+  if(!d || typeof d !== 'object') return;
+  if(d.type === 'join'){
+    const name = String(d.name || '').trim().slice(0, 12);
+    if(!name) return;
+    if(banned.has(name)){ c.send({type:'error', msg:'선생님이 이 이름을 내보냈어요. 실명을 정확히 입력했는지 선생님께 확인해 주세요.'}); return; }
+    const p = players[name];
+    if(p && p.online && p.cid !== c.peer){
+      const old = [...conns.values()].find(x => x.name === name);
+      if(old && old.conn.open){ c.send({type:'error', msg:'같은 이름으로 이미 들어와 있어요. 동명이인이면 이름 뒤에 번호를 붙여 주세요. (예: 김민준2)'}); return; }
+    }
+    if(!p) players[name] = { score:0, streak:0, last:null };
+    players[name].online = true; players[name].cid = c.peer;
+    conns.set(c.peer, { conn:c, name });
+    c.send({ type:'joined', name });
+    changed();
+  } else if(d.type === 'answer'){
+    const info = conns.get(c.peer); if(!info) return;
+    const ch = d.choice;
+    if(S.phase === 'answer' && d.qi === S.qi && !answers[info.name] && [0,1,2,3].includes(ch)){
+      answers[info.name] = { choice: ch, ms: Date.now() - S.answerStart };
+      const online = Object.keys(players).filter(n => players[n].online);
+      if(online.length && online.every(n => answers[n])) endAnswer(); else changed();
+    }
+  }
+}
+function dropConn(c){
+  const info = conns.get(c.peer); if(!info) return;
+  conns.delete(c.peer);
+  const p = players[info.name];
+  if(p && p.cid === c.peer) p.online = false;
+  changed();
+}
+function ranked(){ return Object.entries(players).sort((a,b) => b[1].score - a[1].score); }
+function curTime(){ return player && player.getCurrentTime ? (safe(() => player.getCurrentTime()) || 0) : 0; }
+function pub(){
+  const now = Date.now(), r = ranked();
+  let counts = null;
+  if(S.phase === 'reveal'){ counts = [0,0,0,0]; Object.values(answers).forEach(a => counts[a.choice]++); }
+  return {
+    phase:S.phase, seg:S.seg, vid:S.vid, qi:S.qi, videoDone:S.videoDone,
+    remain: S.endsAt ? Math.max(0, S.endsAt - now) : 0, dur:S.dur || 0,
+    video: S.phase === 'video' ? { playing:vidPlaying, time:curTime(), rate:S.rate } : null,
+    counts, answered:Object.keys(answers).length,
+    total:Object.values(players).filter(p => p.online).length,
+    names:Object.keys(players).filter(n => players[n].online),
+    top:r.slice(0, 10).map(([n,p]) => ({ name:n, score:p.score })),
+    nplayers:r.length
+  };
+}
+function meFor(name, r){
+  const p = players[name]; if(!p) return null;
+  return { name, score:p.score, rank:r.findIndex(x => x[0] === name) + 1,
+    last: p.last && p.last.qi === S.qi ? p.last : null, answered: !!answers[name] };
+}
+function broadcast(){
+  const s = pub(), r = ranked();
+  conns.forEach(({conn, name}) => { if(conn.open) safe(() => conn.send({ type:'state', s, me:meFor(name, r) })); });
+}
+function changed(){
+  store.set('kq_host', { code, S, players, answers, banned:[...banned], ts:Date.now() });
+  render(); broadcast();
+}
+
+/* 진행 */
+function startSegment(i){
+  S.seg = i; S.vid = 0; S.videoDone = false; S.phase = 'video'; S.endsAt = 0; S.rate = SEGMENTS[i].rate; answers = {};
+  loadHostVideo(true); changed();
+}
+function loadHostVideo(autoplay){
+  const v = SEGMENTS[S.seg].videos[S.vid];
+  endedKey = '';
+  ensurePlayer().then(p => { p.unMute(); autoplay ? p.loadVideoById(vOpts(v)) : p.cueVideoById(vOpts(v)); });
+}
+function hostVideoEnded(){
+  const key = S.seg + '-' + S.vid;
+  if(endedKey === key) return; endedKey = key;
+  vidPlaying = false;
+  if(S.vid < SEGMENTS[S.seg].videos.length - 1){ S.vid++; loadHostVideo(true); }
+  else { S.videoDone = true; safe(() => player.pauseVideo()); }
+  changed();
+}
+function startQuestion(qi){
+  safe(() => player && player.pauseVideo()); vidPlaying = false;
+  S.qi = qi; S.seg = segOf(qi); S.phase = 'getready'; S.dur = READ_MS; S.endsAt = Date.now() + READ_MS; answers = {};
+  changed();
+}
+function startAnswer(){
+  const Q = QUESTIONS[S.qi];
+  S.phase = 'answer'; S.dur = Q.t * 1000; S.answerStart = Date.now(); S.endsAt = S.answerStart + S.dur;
+  changed();
+}
+function endAnswer(){
+  const Q = QUESTIONS[S.qi];
+  Object.entries(players).forEach(([n, p]) => {
+    const a = answers[n];
+    const ok = !!a && a.choice === Q.a;
+    const pts = ok ? Math.round(1000 * (1 - Math.min(a.ms, Q.t * 1000) / (Q.t * 1000) / 2)) : 0;
+    p.streak = ok ? (p.streak || 0) + 1 : 0;
+    p.score += pts;
+    p.last = { qi:S.qi, choice: a ? a.choice : null, ok, pts };
+  });
+  S.phase = 'reveal'; S.endsAt = 0;
+  changed();
+}
+function nextFromBoard(){
+  const seg = SEGMENTS[S.seg];
+  if(S.qi < seg.to) startQuestion(S.qi + 1);
+  else if(S.seg < SEGMENTS.length - 1) startSegment(S.seg + 1);
+  else { S.phase = 'final'; changed(); }
+}
+function hostAct(act, el){
+  if(act === 'start') startSegment(0);
+  else if(act === 'play') ensurePlayer().then(p => vidPlaying ? p.pauseVideo() : p.playVideo());
+  else if(act === 'nextvid'){ safe(() => player.stopVideo()); hostVideoEnded(); }
+  else if(act === 'quiz') startQuestion(SEGMENTS[S.seg].from);
+  else if(act === 'skipread') startAnswer();
+  else if(act === 'endq') endAnswer();
+  else if(act === 'board'){ S.phase = 'board'; changed(); }
+  else if(act === 'next') nextFromBoard();
+  else if(act === 'restart'){ resetOpen = true; render(); }
+  else if(act === 'restartno'){ resetOpen = false; render(); }
+  else if(act === 'manage'){ manageOpen = !manageOpen; kickAsk = ''; render(); }
+  else if(act === 'restartyes'){
+    banned = new Set();
+    resetOpen = false;
+    Object.values(players).forEach(p => { p.score = 0; p.streak = 0; p.last = null; });
+    answers = {}; S.phase = 'lobby'; S.seg = 0; S.vid = 0; S.qi = 0; S.endsAt = 0;
+    safe(() => player.stopVideo()); changed();
+  }
+}
+let resetOpen = false;
+let banned = new Set(), kickAsk = '', manageOpen = false;
+function kick(name){
+  kickAsk = '';
+  conns.forEach((info, id) => {
+    if(info.name !== name) return;
+    safe(() => info.conn.send({ type:'kicked' }));
+    setTimeout(() => safe(() => info.conn.close()), 400);
+    conns.delete(id);
+  });
+  delete players[name]; delete answers[name];
+  banned.add(name);
+  changed();
+}
+function manageHTML(){
+  const list = ranked();
+  const rowsH = list.length ? list.map(([n, p]) => `<div class="mrow"><span class="nm">${esc(n)}</span>
+    <span class="st">${p.online ? '접속 중' : '연결 끊김'} · ${p.score}점</span>
+    <button class="btn kick ${kickAsk === n ? 'ask' : ''}" data-kick="${esc(n)}">${kickAsk === n ? '정말 내보내기' : '내보내기'}</button></div>`).join('')
+    : '<p class="muted">아직 들어온 학생이 없어요</p>';
+  return `<div class="mpanel" role="dialog" aria-label="학생 관리"><h2>학생 관리</h2>
+    <p class="note" style="text-align:left;margin:0">내보낸 학생은 같은 이름으로 다시 들어올 수 없어요. 실명으로 다시 들어오게 해 주세요.</p>
+    <div class="mlist">${rowsH}</div><button class="btn" data-act="manage">닫기</button></div>`;
+}
+
+setInterval(() => {
+  if(role !== 'host' || !S) return;
+  const now = Date.now();
+  if(S.phase === 'getready' && now >= S.endsAt) startAnswer();
+  else if(S.phase === 'answer' && now >= S.endsAt) endAnswer();
+  else if(S.phase === 'video' && !S.videoDone){
+    const v = SEGMENTS[S.seg].videos[S.vid];
+    if(v.end && vidPlaying && curTime() >= v.end - 0.3){ safe(() => player.pauseVideo()); hostVideoEnded(); }
+    if(now - lastSync > 2000){ lastSync = now; broadcast(); }
+  }
+}, 200);
+
+/* =========================================================
+   학생
+   ========================================================= */
+let hostConn = null, joined = false, view = null, localEnds = 0, myAnswer = null, joinErr = '';
+let studentMuted = true, loadedKey = '', retryT = null, stopped = false, lastQ = -1, lastPhase = '';
+
+function studentJoin(c, name){
+  code = c; stopped = false; joinErr = ''; net = 'connecting';
+  store.set('kq_student', { code, name });
+  me.name = name; render();
+  if(typeof Peer === 'undefined'){ net = 'err'; netMsg = '연결 도구를 불러오지 못했어요. 인터넷 연결을 확인해 주세요.'; render(); return; }
+  peer = new Peer({ debug:0 });
+  peer.on('open', connectHost);
+  peer.on('disconnected', () => setTimeout(() => { if(peer && !peer.destroyed) peer.reconnect(); }, 2000));
+  peer.on('error', e => {
+    if(stopped) return;
+    if(e.type === 'peer-unavailable'){ net = 'nohost'; render(); retry(); }
+    else { net = 'retry'; render(); retry(); }
+  });
+}
+const me = { name:'' };
+function retry(){ if(retryT || stopped) return; retryT = setTimeout(() => { retryT = null; connectHost(); }, 3000); }
+function connectHost(){
+  if(stopped || !peer || peer.destroyed) return;
+  if(peer.disconnected){ safe(() => peer.reconnect()); retry(); return; }
+  if(hostConn && hostConn.open) return;
+  hostConn = peer.connect(PREFIX + code, { reliable:true });
+  hostConn.on('open', () => { net = 'ok'; hostConn.send({ type:'join', name:me.name }); render(); });
+  hostConn.on('data', onStudentData);
+  hostConn.on('close', () => { if(stopped) return; net = 'retry'; render(); retry(); });
+}
+function onStudentData(d){
+  if(!d) return;
+  if(d.type === 'error'){
+    stopped = true; joined = false; joinErr = d.msg;
+    safe(() => hostConn.close()); safe(() => peer.destroy()); render(); return;
+  }
+  if(d.type === 'kicked'){
+    stopped = true; joined = false; view = null; me.name = '';
+    joinErr = '선생님이 내보냈어요. 실명을 정확히 입력해 다시 들어와 주세요.';
+    safe(() => hostConn.close()); safe(() => peer.destroy()); render(); return;
+  }
+  if(d.type === 'joined'){ joined = true; render(); return; }
+  if(d.type === 'state'){
+    const s = d.s;
+    if(s.qi !== lastQ || (s.phase === 'getready' && lastPhase !== 'getready')) myAnswer = null;
+    if(d.me && d.me.answered && myAnswer === null && s.phase === 'answer') myAnswer = -1;
+    lastQ = s.qi; lastPhase = s.phase;
+    localEnds = Date.now() + s.remain;
+    const redraw = !view || view.s.phase !== s.phase || view.s.qi !== s.qi || view.s.vid !== s.vid
+      || JSON.stringify([view.s.answered, view.s.total, view.s.names, view.s.videoDone, view.s.top, view.me]) !== JSON.stringify([s.answered, s.total, s.names, s.videoDone, s.top, d.me]);
+    view = { s, me:d.me };
+    syncStudentVideo(s);
+    if(redraw) render();
+  }
+}
+function syncStudentVideo(s){
+  if(s.phase !== 'video'){ safe(() => player && player.pauseVideo()); return; }
+  const v = SEGMENTS[s.seg].videos[s.vid];
+  ensurePlayer().then(p => {
+    const key = s.seg + '-' + s.vid;
+    if(studentMuted) p.mute(); else p.unMute();
+    if(loadedKey !== key){
+      loadedKey = key;
+      s.video && s.video.playing ? p.loadVideoById(vOpts(v, s.video.time)) : p.cueVideoById(vOpts(v, s.video ? s.video.time : 0));
+      return;
+    }
+    if(!s.video) return;
+    if(Math.abs((p.getPlaybackRate() || 1) - s.video.rate) > 0.01) p.setPlaybackRate(s.video.rate);
+    const st = p.getPlayerState(), t = p.getCurrentTime() || 0;
+    if(s.video.playing){
+      if(Math.abs(t - s.video.time) > 2) p.seekTo(s.video.time, true);
+      if(st !== 1 && st !== 3) p.playVideo();
+    } else {
+      if(st === 1 || st === 3) p.pauseVideo();
+      if(Math.abs(t - s.video.time) > 1.5) p.seekTo(s.video.time, true);
+    }
+  });
+}
+function studentAnswer(i){
+  if(!view || view.s.phase !== 'answer' || myAnswer !== null || !hostConn || !hostConn.open) return;
+  myAnswer = i;
+  hostConn.send({ type:'answer', qi:view.s.qi, choice:i });
+  render();
+}
+
+function onPlayerState(e){
+  if(role === 'host'){
+    if(e.data === 1){ vidPlaying = true; if(Math.abs(player.getPlaybackRate() - S.rate) > 0.01) player.setPlaybackRate(S.rate); }
+    else if(e.data === 2){ vidPlaying = false; }
+    else if(e.data === 0){ if(S.phase === 'video') hostVideoEnded(); return; }
+    if(e.data === 1 || e.data === 2){ lastSync = Date.now(); render(); broadcast(); }
+  } else if(e.data === 1 && view && view.s.video){
+    if(Math.abs(player.getPlaybackRate() - view.s.video.rate) > 0.01) player.setPlaybackRate(view.s.video.rate);
+  }
+}
+
+/* =========================================================
+   화면 그리기 (선생님·학생 같은 화면)
+   ========================================================= */
+function render(){
+  const top = $('#top'), stage = $('#stage'), bar = $('#hostbar'), va = $('#videoArea');
+  if(!role){ va.hidden = true; bar.hidden = true; top.innerHTML = brand(''); stage.innerHTML = roleScreen(); return; }
+  if(role === 'student' && !joined){
+    va.hidden = true; bar.hidden = true; top.innerHTML = brand('학생 참여'); stage.innerHTML = joinScreen(); return;
+  }
+  const v = role === 'host' ? { s:pub(), me:null } : view;
+  if(!v){ va.hidden = true; top.innerHTML = brand(''); stage.innerHTML = '<div class="wait">선생님 화면과 연결하는 중…</div>'; return; }
+  const s = v.s, seg = SEGMENTS[s.seg];
+  top.innerHTML = brand(s.phase === 'lobby' ? '대기실' : s.phase === 'final' ? '최종 결과' : seg.title) + statusPills(v);
+  va.hidden = s.phase !== 'video';
+  $('#shield').hidden = role === 'host';
+  const fn = { lobby, video, getready, answer, reveal, board, final }[s.phase];
+  stage.innerHTML = fn ? fn(v) : '';
+  if(s.phase === 'lobby' && role === 'host') drawQR();
+  if(role === 'host'){ bar.hidden = false; bar.innerHTML = hostControls(s); } else bar.hidden = true;
+  const mg = $('#manage');
+  if(role === 'host' && manageOpen){ mg.hidden = false; mg.innerHTML = manageHTML(); } else mg.hidden = true;
+  tick();
+}
+function brand(sub){ return `<div class="brand"><b>우주탐사</b><span>${esc(sub)}</span></div>`; }
+function statusPills(v){
+  const s = v.s;
+  const netPill = net === 'ok' ? '<span class="pill ok">연결됨</span>'
+    : net === 'nohost' ? '<span class="pill warn">선생님 화면을 찾는 중</span>'
+    : net === 'err' ? '<span class="pill err">연결 끊김</span>' : '<span class="pill warn">연결 중…</span>';
+  if(role === 'host') return `<div class="pills"><span class="pill">코드 ${code}</span><span class="pill">학생 ${s.total}명</span>${netPill}</div>`;
+  return `<div class="pills">${netPill}<span class="pill me">${esc(me.name)} · ${v.me ? v.me.score : 0}점</span></div>`;
+}
+function joinUrl(){ return location.origin + location.pathname + '?room=' + code; }
+
+function roleScreen(){
+  const saved = store.get('kq_host');
+  const canResume = saved && saved.S && Date.now() - saved.ts < 6 * 3600 * 1000;
+  return `
+  <div class="eyebrow">영상 7개 · 퀴즈 25문항</div>
+  <h1>우주탐사 영상 퀴즈</h1>
+  <p class="muted">영상을 보고 바로 퀴즈를 풀어요. 선생님 화면과 학생 화면이 함께 움직여요.</p>
+  <div class="roles">
+    <button class="role" data-go="host"><b>선생님 화면으로 시작</b><span class="muted">참여 코드를 만들고 수업을 진행해요</span></button>
+    <button class="role" data-go="student"><b>학생으로 참여</b><span class="muted">선생님이 알려준 코드를 입력해요</span></button>
+    ${canResume ? `<button class="role small" data-go="resume"><b>이어하기</b><span class="muted">코드 ${esc(saved.code)} 게임을 그대로 이어서 진행해요</span></button>` : ''}
+  </div>
+  ${location.protocol === 'file:' ? '<p class="note">지금은 컴퓨터에 있는 파일로 열려 있어요. 학생이 접속하려면 이 파일을 인터넷 주소로 올려야 해요.</p>' : ''}`;
+}
+function joinScreen(){
+  const saved = store.get('kq_student') || {};
+  const params = new URLSearchParams(location.search);
+  const c = params.get('room') || saved.code || '';
+  const n = saved.code === c ? saved.name || '' : '';
+  const busy = net === 'connecting';
+  return `
+  <form class="form" id="joinForm" autocomplete="off">
+    <h2>퀴즈 참여하기</h2>
+    <label for="codeIn">참여 코드 (6자리)</label>
+    <input id="codeIn" inputmode="numeric" maxlength="6" value="${esc(c)}" placeholder="123456">
+    <label for="nameIn">이름 (실명으로 써 주세요)</label>
+    <input id="nameIn" maxlength="12" value="${esc(me.name || n)}" placeholder="예: 김민준">
+    <button class="btn" type="submit" ${busy && !stopped ? 'disabled' : ''}>${busy && !stopped ? (net === 'nohost' ? '선생님 화면 찾는 중…' : '연결 중…') : '참여'}</button>
+    ${joinErr ? `<div class="err">${esc(joinErr)}</div>` : ''}
+    ${net === 'nohost' && !stopped ? '<div class="muted">코드가 맞는지, 선생님 화면이 켜져 있는지 확인해 주세요. 자동으로 다시 시도해요.</div>' : ''}
+    ${net === 'err' && netMsg ? `<div class="err">${esc(netMsg)}</div>` : ''}
+  </form>`;
+}
+
+function lobby(v){
+  const s = v.s;
+  const chips = s.names.length ? s.names.map(n => role === 'host'
+      ? `<button class="chip ${kickAsk === n ? 'ask' : ''}" data-kick="${esc(n)}" title="눌러서 내보내기">${esc(n)} <span class="x">${kickAsk === n ? '내보내기?' : '×'}</span></button>`
+      : `<span class="chip ${v.me && v.me.name === n ? 'me' : ''}">${esc(n)}</span>`).join('') : '<span class="muted">아직 들어온 학생이 없어요</span>';
+  const left = role === 'host'
+    ? `<div class="joinbox"><div class="eyebrow">참여 코드</div><div class="code">${code.slice(0,3)} ${code.slice(3)}</div>
+        <div id="qr"></div><div class="url">${esc(joinUrl())}</div>
+        <button class="btn ghost" data-copy="1">주소 복사</button>
+        ${net === 'err' ? `<div class="err">${esc(netMsg)}</div>` : ''}</div>`
+    : `<div class="joinbox"><div class="eyebrow">참여 완료</div><h2>${esc(v.me ? v.me.name : me.name)}</h2><p class="muted">선생님이 시작할 때까지 기다려 주세요</p></div>`;
+  return `<div class="lobby">${left}<div class="roster"><h2>들어온 학생 ${s.total}명</h2><div class="chips">${chips}</div></div></div>`;
+}
+function drawQR(){
+  const el = $('#qr'); if(!el) return;
+  if(typeof QRCode === 'undefined' || location.protocol === 'file:'){ el.hidden = true; return; }
+  el.innerHTML = '';
+  new QRCode(el, { text: joinUrl(), width:170, height:170, correctLevel: QRCode.CorrectLevel.M });
+}
+function video(v){
+  const s = v.s, seg = SEGMENTS[s.seg], n = seg.videos.length;
+  const nq = seg.to - seg.from + 1;
+  const sub = `영상 ${s.vid + 1} / ${n} · ${s.video ? s.video.rate : seg.rate}배속${seg.videos[s.vid].end ? ' · 앞 ' + Math.round(seg.videos[s.vid].end / 60) + '분만' : ''}`;
+  return `<div class="vhead"><div><div class="eyebrow">${esc(sub)}</div><h2>${esc(seg.title)}</h2></div>
+    ${role === 'student' ? `<button class="btn ghost" data-mute="1">${studentMuted ? '소리 켜기' : '소리 끄기'}</button>` : ''}</div>
+    ${ytFailed ? '<div class="err">유튜브를 불러오지 못했어요. 학교 네트워크에서 유튜브가 막혀 있는지 확인해 주세요.</div>' : ''}
+    ${s.videoDone ? `<div class="banner">영상 끝! 이제 퀴즈 ${seg.from + 1}${nq > 1 ? '–' + (seg.to + 1) : ''}번 (${nq}문항)</div>` : ''}`;
+}
+function qTop(s, showTimer){
+  const Q = QUESTIONS[s.qi];
+  return `<div class="eyebrow">문제 ${s.qi + 1} / ${QUESTIONS.length} · 제한시간 ${Q.t}초</div>
+    <div class="qhead">
+      ${showTimer ? `<div class="timer" id="timer"><span id="timerNum">${Q.t}</span></div>` : ''}
+      <div class="qcard">${esc(Q.q)}</div>
+      ${showTimer ? `<div class="count"><b>${s.answered}</b><span class="muted">/ ${s.total} 답함</span></div>` : ''}
+    </div>`;
+}
+function getready(v){
+  return qTop(v.s, false) + '<div class="readbar"><i id="readFill"></i></div><p class="note">문제를 읽어 보세요. 곧 보기가 나와요!</p>';
+}
+function tilesHTML(s, mode){
+  const Q = QUESTIONS[s.qi];
+  return '<div class="tiles">' + Q.o.map((t, i) => {
+    let cls = 'tile c' + i, mark = '';
+    if(mode === 'reveal'){ if(i !== Q.a) cls += ' dim'; else mark = '<span class="mark">✓</span>';
+      if(v_last && v_last.choice === i && i !== Q.a){ cls = cls.replace(' dim', ''); cls += ' pick dim'; mark = '<span class="mark">✗</span>'; } }
+    if(mode === 'answer' && role === 'student' && myAnswer !== null){ cls += myAnswer === i ? ' pick' : ' dim'; }
+    const inner = `<span class="sh">${SHAPES[i]}</span><span class="tx">${esc(t)}</span>${mark}`;
+    if(mode === 'answer' && role === 'student')
+      return `<button class="${cls}" data-ans="${i}" ${myAnswer !== null ? 'disabled' : ''}>${inner}</button>`;
+    return `<div class="${cls}">${inner}</div>`;
+  }).join('') + '</div>';
+}
+let v_last = null;
+function answer(v){
+  v_last = null;
+  const waitMsg = role === 'student' && myAnswer !== null ? '<div class="wait">답을 냈어요! 다른 친구들을 기다려요</div>' : '';
+  return qTop(v.s, true) + tilesHTML(v.s, 'answer') + waitMsg;
+}
+function reveal(v){
+  const s = v.s, Q = QUESTIONS[s.qi], c = s.counts || [0,0,0,0], mx = Math.max(1, ...c);
+  v_last = v.me ? v.me.last : null;
+  let res = '';
+  if(role === 'student'){
+    const L = v.me && v.me.last;
+    res = L && L.ok ? `<div class="result good">정답! +${L.pts}점<small>지금 ${v.me.rank}등 · 총 ${v.me.score}점</small></div>`
+      : `<div class="result bad">${L && L.choice !== null ? '아쉬워요, 오답!' : '시간 초과!'}<small>정답: ${esc(Q.o[Q.a])} · 총 ${v.me ? v.me.score : 0}점</small></div>`;
+  }
+  const bars = '<div class="bars">' + c.map((n, i) => `<div class="bar c${i} ${i !== Q.a ? 'dim' : ''}"><span>${n}</span><i style="height:${Math.round(n / mx * 110) + 6}px"></i></div>`).join('') + '</div>';
+  const html = qTop(s, false) + res + bars + tilesHTML(s, 'reveal');
+  v_last = null;
+  return html;
+}
+function rows(list, meName, start){
+  return list.map((p, i) => `<div class="row ${p.name === meName ? 'me' : ''}"><span class="rk">${(start || 0) + i + 1}</span><span class="nm">${esc(p.name)}</span><span class="sc">${p.score}점</span></div>`).join('');
+}
+function board(v){
+  const s = v.s, meName = v.me ? v.me.name : '';
+  const mine = v.me && v.me.rank > 5 ? `<div class="row me"><span class="rk">${v.me.rank}</span><span class="nm">${esc(meName)}</span><span class="sc">${v.me.score}점</span></div>` : '';
+  return `<div class="eyebrow">문제 ${s.qi + 1} / ${QUESTIONS.length} 이후</div><h1>현재 순위</h1>
+    <div class="board">${rows(s.top.slice(0, 5), meName)}${mine}${s.top.length ? '' : '<p class="muted">참여한 학생이 없어요</p>'}</div>`;
+}
+function final(v){
+  const s = v.s, t = s.top, meName = v.me ? v.me.name : '';
+  const pod = (p, k) => p ? `<div class="pod p${k}"><span class="nm">${esc(p.name)}</span><span class="muted">${p.score}점</span><div class="blk">${k}</div></div>` : `<div class="pod p${k}"></div>`;
+  const mine = v.me ? `<div class="result good">${esc(meName)}님은 ${v.me.rank}등!<small>총 ${v.me.score}점</small></div>` : '';
+  return `<h1>최종 결과</h1>${mine}
+    <div class="podium">${pod(t[1], 2)}${pod(t[0], 1)}${pod(t[2], 3)}</div>
+    <div class="board">${rows(t.slice(3, 10), meName, 3)}</div>`;
+}
+function hostControls(s){
+  const seg = SEGMENTS[s.seg];
+  const jump = `<select id="jump" aria-label="구간 이동"><option value="">구간 이동…</option>${SEGMENTS.map((g, i) => `<option value="v${i}">${esc(g.title)} 영상</option><option value="q${i}">${esc(g.title)} 퀴즈</option>`).join('')}</select>`;
+  let main = '';
+  if(resetOpen) return `<span>점수를 모두 지우고 처음부터 할까요?</span><button class="btn" data-act="restartyes">처음부터</button><button class="btn ghost" data-act="restartno">취소</button>`;
+  if(s.phase === 'lobby') main = `<button class="btn" data-act="start" ${net !== 'ok' ? 'disabled' : ''}>게임 시작 ▶</button>`;
+  else if(s.phase === 'video'){
+    const rates = [1, 1.25, 1.5, 1.75, 2].map(r => `<option value="${r}" ${r === S.rate ? 'selected' : ''}>${r}배속</option>`).join('');
+    const last = s.vid >= seg.videos.length - 1;
+    main = `<button class="btn ghost" data-act="play">${vidPlaying ? '일시정지' : '재생'}</button>
+      <select id="rate" aria-label="배속">${rates}</select>
+      ${!last && !s.videoDone ? '<button class="btn ghost" data-act="nextvid">다음 영상 ▶</button>' : ''}
+      <button class="btn${s.videoDone ? '' : ' ghost'}" data-act="quiz">퀴즈 시작 ▶</button>`;
+  }
+  else if(s.phase === 'getready') main = '<button class="btn ghost" data-act="skipread">바로 보기 ▶</button>';
+  else if(s.phase === 'answer') main = '<button class="btn ghost" data-act="endq">시간 종료</button>';
+  else if(s.phase === 'reveal') main = '<button class="btn" data-act="board">순위 보기 ▶</button>';
+  else if(s.phase === 'board'){
+    const label = s.qi < seg.to ? '다음 문제 ▶' : s.seg < SEGMENTS.length - 1 ? '다음 영상 ▶' : '최종 결과 ▶';
+    main = `<button class="btn" data-act="next">${label}</button>`;
+  }
+  else if(s.phase === 'final') main = '';
+  main += `<button class="btn ghost" data-act="manage">학생 관리 (${s.nplayers})</button>`;
+  return main + (s.phase !== 'lobby' ? jump + '<button class="btn ghost" data-act="restart">처음부터</button>' : '');
+}
+
+/* 타이머 표시 */
+function tick(){
+  const v = role === 'host' && S ? { s:{ phase:S.phase, dur:S.dur } } : view;
+  if(!v) return;
+  const remain = role === 'host' ? (S.endsAt ? S.endsAt - Date.now() : 0) : localEnds - Date.now();
+  const r = Math.max(0, remain);
+  const num = $('#timerNum'), fill = $('#readFill'), tm = $('#timer');
+  if(num){ const sec = Math.ceil(r / 1000); num.textContent = sec; if(tm) tm.classList.toggle('low', sec <= 3); }
+  if(fill && v.s.dur) fill.style.width = (r / v.s.dur * 100) + '%';
+}
+setInterval(tick, 100);
+
+/* 클릭 처리 */
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-go],[data-act],[data-ans],[data-mute],[data-copy],[data-kick]');
+  if(!t) return;
+  if(t.dataset.go === 'host') hostInit(false);
+  else if(t.dataset.go === 'resume') hostInit(true);
+  else if(t.dataset.go === 'student'){ role = 'student'; render(); }
+  else if(t.dataset.kick != null){ const n = t.dataset.kick; if(kickAsk === n) kick(n); else { kickAsk = n; render(); } }
+  else if(t.dataset.act) hostAct(t.dataset.act, t);
+  else if(t.dataset.ans != null) studentAnswer(+t.dataset.ans);
+  else if(t.dataset.mute){
+    studentMuted = !studentMuted;
+    ensurePlayer().then(p => studentMuted ? p.mute() : (p.unMute(), p.setVolume(100)));
+    render();
+  }
+  else if(t.dataset.copy){
+    const u = joinUrl();
+    if(navigator.clipboard) navigator.clipboard.writeText(u).then(() => { t.textContent = '복사했어요'; }).catch(() => {});
+  }
+});
+document.addEventListener('change', e => {
+  if(e.target.id === 'rate'){
+    S.rate = +e.target.value; safe(() => player.setPlaybackRate(S.rate)); changed();
+  } else if(e.target.id === 'jump' && e.target.value){
+    const val = e.target.value, i = +val.slice(1);
+    if(val[0] === 'v') startSegment(i); else startQuestion(SEGMENTS[i].from);
+  }
+});
+document.addEventListener('submit', e => {
+  if(e.target.id !== 'joinForm') return;
+  e.preventDefault();
+  const c = $('#codeIn').value.replace(/\D/g, ''), n = $('#nameIn').value.trim();
+  if(c.length !== 6){ joinErr = '참여 코드 6자리를 입력해 주세요.'; render(); return; }
+  if(n.length < 2){ joinErr = '이름을 실명으로 입력해 주세요.'; render(); return; }
+  if(peer){ safe(() => peer.destroy()); peer = null; }
+  studentJoin(c, n);
+});
+
+/* 시작 */
+if(new URLSearchParams(location.search).get('room')) role = 'student';
+render();
+</script>
+</body>
+</html>
