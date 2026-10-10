@@ -418,7 +418,7 @@ function nextFromBoard(){
   const seg = SEGMENTS[S.seg];
   if(S.qi < seg.to) startQuestion(S.qi + 1);
   else if(S.seg < SEGMENTS.length - 1) startSegment(S.seg + 1);
-  else { S.phase = 'final'; changed(); }
+  else { S.phase = 'final'; changed(); fanfare(); }
 }
 function hostAct(act, el){
   if(act === 'start') startSegment(0);
@@ -431,6 +431,7 @@ function hostAct(act, el){
   else if(act === 'next') nextFromBoard();
   else if(act === 'restart'){ resetOpen = true; render(); }
   else if(act === 'restartno'){ resetOpen = false; render(); }
+  else if(act === 'music'){ music.on = !music.on; render(); }
   else if(act === 'manage'){ manageOpen = !manageOpen; kickAsk = ''; render(); }
   else if(act === 'restartyes'){
     banned = new Set();
@@ -754,6 +755,7 @@ function hostControls(s){
     main = `<button class="btn" data-act="next">${label}</button>`;
   }
   else if(s.phase === 'final') main = '';
+  main += `<button class="btn ghost" data-act="music">${music.on ? '음악 끄기' : '음악 켜기'}</button>`;
   main += `<button class="btn ghost" data-act="manage">학생 관리 (${s.nplayers})</button>`;
   return main + (s.phase !== 'lobby' ? jump + '<button class="btn ghost" data-act="restart">처음부터</button>' : '');
 }
@@ -770,10 +772,104 @@ function tick(){
 }
 setInterval(tick, 100);
 
+
+/* =========================================================
+   긴장감 음악 (선생님 화면에서만, 브라우저가 직접 만들어 냄)
+   ========================================================= */
+const music = { ctx:null, master:null, on:true, prev:null, step:0, nextT:0, noise:null };
+function audioInit(){
+  if(!music.ctx){
+    try{
+      const C = window.AudioContext || window.webkitAudioContext;
+      music.ctx = new C(); music.master = music.ctx.createGain(); music.master.gain.value = 0.55;
+      music.master.connect(music.ctx.destination);
+      const b = music.ctx.createBuffer(1, music.ctx.sampleRate * 0.2, music.ctx.sampleRate), d = b.getChannelData(0);
+      for(let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      music.noise = b;
+    }catch(e){ return; }
+  }
+  if(music.ctx.state === 'suspended') safe(() => music.ctx.resume());
+}
+const mf = m => 440 * Math.pow(2, (m - 69) / 12);
+function tone(m, t, dur, type, vol, cutoff){
+  const c = music.ctx, o = c.createOscillator(), g = c.createGain();
+  o.type = type; o.frequency.value = mf(m);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  if(cutoff){ const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = cutoff; o.connect(f).connect(g); } else o.connect(g);
+  g.connect(music.master); o.start(t); o.stop(t + dur + 0.05);
+}
+function hat(t, vol){
+  const c = music.ctx, s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+  s.buffer = music.noise; f.type = 'highpass'; f.frequency.value = 7000;
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+  s.connect(f).connect(g).connect(music.master); s.start(t); s.stop(t + 0.06);
+}
+function kick(t){
+  const c = music.ctx, o = c.createOscillator(), g = c.createGain();
+  o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(40, t + 0.15);
+  g.gain.setValueAtTime(0.7, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+  o.connect(g).connect(music.master); o.start(t); o.stop(t + 0.22);
+}
+const BASS = [45,45,57,45, 45,45,56,45, 45,45,55,45, 48,47,46,44];
+const LEAD = [69,72,76,72, 69,72,77,72, 69,72,76,72, 68,71,74,71];
+function playStep(mode, i, t, sp){
+  if(mode === 'intro'){
+    if(i % 4 === 0) tone(BASS[i], t, sp * 3, 'sawtooth', 0.22, 500);
+    if(i % 4 === 2) hat(t, 0.04);
+    return;
+  }
+  if(i % 2 === 0) tone(BASS[i], t, sp * 1.8, 'sawtooth', 0.3, mode === 'urgent' ? 1200 : 700);
+  if(i % 4 === 0) kick(t);
+  if(mode === 'urgent'){ hat(t, 0.08); tone(LEAD[i], t, sp * 0.9, 'square', 0.07, 3000); }
+  else if(i % 2 === 1) hat(t, 0.06);
+}
+function cymbal(t, dur, vol){
+  const c = music.ctx, s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+  s.buffer = music.noise; s.loop = true; f.type = 'highpass'; f.frequency.value = 5000;
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  s.connect(f).connect(g).connect(music.master); s.start(t); s.stop(t + dur + 0.05);
+}
+function fanfare(){
+  if(!music.ctx || !music.on) return;
+  const t = music.ctx.currentTime + 0.05;
+  const brass = (m, at, d, v) => { tone(m, t + at, d, 'sawtooth', v || 0.2, 2600); tone(m - 12, t + at, d, 'square', 0.06, 1200); };
+  // 빰 빰 빰 빠-밤 빠바바 빠아암!
+  brass(67, 0, 0.14); brass(67, 0.18, 0.14); brass(67, 0.36, 0.14);
+  brass(72, 0.54, 0.5); kick(t + 0.54);
+  brass(67, 1.1, 0.14); brass(72, 1.28, 0.14); brass(76, 1.46, 0.14);
+  for(let k = 0; k < 8; k++) hat(t + 1.1 + k * 0.06, 0.03 + k * 0.012);
+  brass(79, 1.64, 1.8, 0.24); kick(t + 1.64); cymbal(t + 1.64, 2.2, 0.25);
+  [60, 64, 67, 72].forEach(m => tone(m, t + 1.64, 2.0, 'triangle', 0.14));
+  [48, 36].forEach(m => tone(m, t + 1.64, 1.6, 'sine', 0.3));
+}
+function sting(){
+  const t = music.ctx.currentTime + 0.02;
+  [57, 64, 69, 73].forEach((m, k) => tone(m, t + k * 0.06, 1.2, 'triangle', 0.18));
+}
+function musicLoop(){
+  if(!music.ctx) return;
+  let mode = null;
+  if(music.on && role === 'host' && S){
+    if(S.phase === 'getready') mode = 'intro';
+    else if(S.phase === 'answer') mode = S.endsAt - Date.now() <= 5000 ? 'urgent' : 'tense';
+  }
+  if(mode && !music.prev){ music.nextT = music.ctx.currentTime + 0.05; music.step = 0; }
+  if(!mode && (music.prev === 'tense' || music.prev === 'urgent') && S && S.phase === 'reveal') sting();
+  music.prev = mode;
+  if(!mode) return;
+  const sp = 60 / { intro:110, tense:132, urgent:168 }[mode] / 4;
+  while(music.nextT < music.ctx.currentTime + 0.12){
+    playStep(mode, music.step, music.nextT, sp);
+    music.nextT += sp; music.step = (music.step + 1) % 16;
+  }
+}
+setInterval(musicLoop, 25);
+
 /* 클릭 처리 */
 document.addEventListener('click', e => {
   const t = e.target.closest('[data-go],[data-act],[data-ans],[data-mute],[data-copy],[data-kick]');
   if(!t) return;
+  if(t.dataset.go === 'host' || t.dataset.go === 'resume' || role === 'host') audioInit();
   if(t.dataset.go === 'host') hostInit(false);
   else if(t.dataset.go === 'resume') hostInit(true);
   else if(t.dataset.go === 'student'){ role = 'student'; render(); }
